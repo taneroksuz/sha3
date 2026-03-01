@@ -30,44 +30,65 @@ uint64_t SHA3::rot64(uint64_t x, int n)
     return (n == 0) ? x : ((x << n) | (x >> (64 - n)));
 }
 
+uint64_t SHA3::load_lane(const uint8_t *block, size_t lane_index)
+{
+    uint64_t lane = 0;
+    for (int b = 0; b < 8; b++)
+        lane |= (uint64_t)block[lane_index * 8 + b] << (b * 8);
+    return lane;
+}
+
+void SHA3::theta(uint64_t state[5][5], uint64_t C[5], uint64_t D[5])
+{
+    for (int x = 0; x < 5; x++)
+        C[x] = state[x][0] ^ state[x][1] ^ state[x][2]
+             ^ state[x][3] ^ state[x][4];
+
+    for (int x = 0; x < 5; x++)
+        D[x] = C[(x+4)%5] ^ rot64(C[(x+1)%5], 1);
+
+    for (int x = 0; x < 5; x++)
+        for (int y = 0; y < 5; y++)
+            state[x][y] ^= D[x];
+}
+
+void SHA3::rho_pi(uint64_t state[5][5], uint64_t B[5][5])
+{
+    for (int x = 0; x < 5; x++)
+        for (int y = 0; y < 5; y++)
+            B[y][(2*x + 3*y) % 5] = rot64(state[x][y], RHO[x][y]);
+}
+
+void SHA3::chi(uint64_t state[5][5], uint64_t B[5][5])
+{
+    for (int x = 0; x < 5; x++)
+        for (int y = 0; y < 5; y++)
+            state[x][y] = B[x][y] ^ (~B[(x+1)%5][y] & B[(x+2)%5][y]);
+}
+
+void SHA3::iota(uint64_t state[5][5], uint64_t rc)
+{
+    state[0][0] ^= rc;
+}
+
 void SHA3::keccak_f(uint64_t state[5][5])
 {
     uint64_t C[5], D[5], B[5][5];
 
     for (int round = 0; round < 24; round++)
     {
-        for (int x = 0; x < 5; x++)
-            C[x] = state[x][0] ^ state[x][1] ^ state[x][2]
-                 ^ state[x][3] ^ state[x][4];
-
-        for (int x = 0; x < 5; x++)
-            D[x] = C[(x+4)%5] ^ rot64(C[(x+1)%5], 1);
-
-        for (int x = 0; x < 5; x++)
-            for (int y = 0; y < 5; y++)
-                state[x][y] ^= D[x];
-
-        for (int x = 0; x < 5; x++)
-            for (int y = 0; y < 5; y++)
-                B[y][(2*x + 3*y) % 5] = rot64(state[x][y], RHO[x][y]);
-
-        for (int x = 0; x < 5; x++)
-            for (int y = 0; y < 5; y++)
-                state[x][y] = B[x][y] ^ (~B[(x+1)%5][y] & B[(x+2)%5][y]);
-
-        state[0][0] ^= RC[round];
+        theta(state, C, D);
+        rho_pi(state, B);
+        chi(state, B);
+        iota(state, RC[round]);
     }
 }
 
 void SHA3::absorb_block(uint64_t state[5][5], const uint8_t *block, size_t rate_bytes)
 {
     for (size_t i = 0; i < rate_bytes / 8; i++)
-    {
-        uint64_t lane = 0;
-        for (int b = 0; b < 8; b++)
-            lane |= (uint64_t)block[i*8 + b] << (b * 8);
-        state[i % 5][i / 5] ^= lane;
-    }
+        state[i % 5][i / 5] ^= load_lane(block, i);
+
     keccak_f(state);
 }
 

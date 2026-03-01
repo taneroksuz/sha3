@@ -17,6 +17,16 @@ class SHA3
 
     static uint64_t rot64(uint64_t x, int n);
 
+    static uint64_t load_lane(const uint8_t *block, size_t lane_index);
+
+    static void theta(uint64_t state[5][5], uint64_t C[5], uint64_t D[5]);
+
+    static void rho_pi(uint64_t state[5][5], uint64_t B[5][5]);
+
+    static void chi(uint64_t state[5][5], uint64_t B[5][5]);
+
+    static void iota(uint64_t state[5][5], uint64_t rc);
+
     void keccak_f(uint64_t state[5][5]);
 
     void absorb_block(uint64_t state[5][5], const uint8_t *block, size_t rate_bytes);
