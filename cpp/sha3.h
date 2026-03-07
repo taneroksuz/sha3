@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <cstdlib>
-#include <cstring>
 #include <cstdio>
 #include <cerrno>
 #include <fstream>
@@ -18,6 +17,10 @@ class SHA3
     static uint64_t rot64(uint64_t x, int n);
 
     static uint64_t load_lane(const uint8_t *block, size_t lane_index);
+
+    static void zero_bytes(uint8_t *dst, size_t n);
+
+    static void copy_bytes(uint8_t *dst, const uint8_t *src, size_t n);
 
     static void theta(uint64_t state[5][5], uint64_t C[5], uint64_t D[5]);
 

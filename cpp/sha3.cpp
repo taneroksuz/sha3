@@ -2,6 +2,18 @@
 
 using namespace std;
 
+void SHA3::zero_bytes(uint8_t *dst, size_t n)
+{
+    for (size_t i = 0; i < n; i++)
+        dst[i] = 0;
+}
+
+void SHA3::copy_bytes(uint8_t *dst, const uint8_t *src, size_t n)
+{
+    for (size_t i = 0; i < n; i++)
+        dst[i] = src[i];
+}
+
 static const uint64_t RC[24] = {
     0x0000000000000001ULL, 0x0000000000008082ULL,
     0x800000000000808AULL, 0x8000000080008000ULL,
@@ -112,7 +124,7 @@ void SHA3::keccak(const uint8_t *in, size_t length, uint8_t *out,
                   size_t rate_bytes, size_t digest_bytes)
 {
     uint64_t state[5][5];
-    memset(state, 0, sizeof(state));
+    zero_bytes((uint8_t *)state, sizeof(state));
 
     uint8_t *buf = (uint8_t *) malloc(rate_bytes);
 
@@ -125,19 +137,19 @@ void SHA3::keccak(const uint8_t *in, size_t length, uint8_t *out,
         if (take > length - offset)
             take = length - offset;
 
-        memcpy(buf + buf_pos, in + offset, take);
+        copy_bytes(buf + buf_pos, in + offset, take);
         buf_pos += take;
         offset  += take;
 
         if (buf_pos == rate_bytes)
         {
             absorb_block(state, buf, rate_bytes);
-            memset(buf, 0, rate_bytes);
+            zero_bytes(buf, rate_bytes);
             buf_pos = 0;
         }
     }
 
-    memset(buf + buf_pos, 0, rate_bytes - buf_pos);
+    zero_bytes(buf + buf_pos, rate_bytes - buf_pos);
     apply_padding(buf, buf_pos, rate_bytes);
     absorb_block(state, buf, rate_bytes);
 
